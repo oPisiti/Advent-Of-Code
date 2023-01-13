@@ -1,0 +1,1 @@
+"NOT" if not isValid else ""
