@@ -1,6 +1,9 @@
-import sys
-sys.path.append("../IntCode Computer")
-from intCodeComputer import IntCodeComputer
+try:
+    from intCodeComputer import IntCodeComputer
+except ModuleNotFoundError:
+    import sys
+    sys.path.append("../IntCode Computer")
+    from intCodeComputer import IntCodeComputer
 
 def day02_plus():
     computer = IntCodeComputer("./day02/input.txt")
