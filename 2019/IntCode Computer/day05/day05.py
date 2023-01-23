@@ -6,8 +6,9 @@ except ModuleNotFoundError:
     from intCodeComputer import IntCodeComputer
 
 def main():
-    comp = IntCodeComputer("./day05/input.txt")
+    comp = IntCodeComputer("./day05/input.txt", input_=1)
     comp.run()
+    print(f'Output: {comp.output}')
 
 
 if __name__ == '__main__':
