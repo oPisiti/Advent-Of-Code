@@ -13,24 +13,25 @@ class IntCodeComputer():
         self.opcode      = ...
         self.read_input_file()        
         
-        # Possible instructions
-        self.opcode_len = 2         # How many digits for an opcode, i.e. 02, 01, 99
-        self.valid_inst = {1, 2, 3, 4}
-        self.halt_inst  = {99}
-        
-        self.jump_after_inst = {    # How many addresses to jump given each instruction
+        # How many addresses to jump given each instruction
+        # DEFINES valid instructions (except halt instruction)
+        self.jump_after_inst = {    
             1: 4,
             2: 4,
             3: 2,
-            4: 2
+            4: 2,
+            5: 3,   # 5 and 6 (jump if true/false) don't jump 3 positions, but is equivalent to.
+            6: 3,   # This is for determining the output address in self.run()
+            7: 4,
+            8: 4
         }
         self.jump            = None
         self.inst_pointer    = self.init_inst_pointer
 
-        # Modes
-        self.inst_max_len = 5   # How many digits in instruction (including param modes)
-        self.modes_len    = self.inst_max_len - self.opcode_len
-        self.modes        = [Mode.zero for _ in range(self.modes_len)]
+        # Possible instructions
+        self.opcode_len = 2         # How many digits for an opcode, i.e. 02, 01, 99
+        self.valid_inst = {key for key in self.jump_after_inst.keys()}
+        self.halt_inst  = {99}
 
         # Memory
         # Given opcode CBAZZ, ABC are memory and ZZ is the instruction
@@ -40,14 +41,19 @@ class IntCodeComputer():
             "C": None
         }
 
+        # Modes
+        self.modes_len    = len(self.memory.keys())
+        self.inst_max_len = self.modes_len + self.opcode_len
+        self.modes        = [Mode.zero for _ in range(self.modes_len)]
+
         # IO
         self.input  = input_
         self.output = None
 
-
-    def run(self) -> None:
+    def run(self, show_outputs=True) -> None:
         """
         Executes opcode
+        Output instructions are printed to console
         """
 
         # Determining instruction
@@ -69,11 +75,11 @@ class IntCodeComputer():
                 # Simple instructions like 3 and 4 only memory A needs to be updated
                 if mem_index >= (self.inst_pointer + self.jump_after_inst[curr_inst]): break
 
-                # Last memory (where to write) should only be dereferenced once at this stage
+                # Last memory (where to write) should only be dereferenced ONCE at this stage
                 # It will be again dereferenced in "operations".
                 if i == self.jump_after_inst[curr_inst] - 2:
                     self.memory[key] = self.opcode[mem_index]
-                    continue
+                    break
 
                 # Instructions that need to read more than one memory address
                 match self.modes[i]:
@@ -84,20 +90,49 @@ class IntCodeComputer():
                     case _:
                         raise ValueError(f"Mode '{self.modes[i]}' not supported")
       
+            # Determining the output address
+            mem = chr(65 + self.jump_after_inst[curr_inst] - 2)
+            output_addr = self.memory[mem]
+
             # Operations
-            output_addr = self.memory["C"] if self.jump_after_inst[curr_inst] == 4 else self.memory["A"]
             match curr_inst:
                 case 1:     # Addition                 
                     self.opcode[output_addr] = self.memory["A"] + self.memory["B"]
+                
                 case 2:     # Product
                     self.opcode[output_addr] = self.memory["A"] * self.memory["B"]
+                
                 case 3:     # Stores input
                     self.opcode[output_addr] = self.input
+                
                 case 4:     # Outputs
-                    self.output = self.opcode[output_addr]
+                    self.output = self.opcode[output_addr]                    
 
                     # Finished a test
-                    print(f'Output: {self.output}')
+                    if show_outputs: print(f'Output: {self.output}')
+                
+                case 5:     # Jump-if-true
+                    if self.memory["A"] != 0:
+                        self.inst_pointer = self.memory["B"]
+                        continue
+                
+                case 6:     # Jump-if-false
+                    if self.memory["A"] == 0:
+                        self.inst_pointer = self.memory["B"]
+                        continue
+                
+                case 7:     # Less than
+                    if self.memory["A"] < self.memory["B"]:
+                        self.opcode[output_addr] = 1
+                    else:
+                        self.opcode[output_addr] = 0
+                
+                case 8:     # Equals
+                    if self.memory["A"] == self.memory["B"]:
+                        self.opcode[output_addr] = 1
+                    else:
+                        self.opcode[output_addr] = 0
+
 
             # Jumping. P.S.: self.jump is updated every instruction by self.get_opcode_and_modes()
             self.inst_pointer += self.jump

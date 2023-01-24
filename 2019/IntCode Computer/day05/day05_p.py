@@ -7,8 +7,8 @@ except ModuleNotFoundError:
 
 
 def day05():
-    comp = IntCodeComputer("./day05/input.txt", input_=1)
-    comp.run(show_outputs = False)
+    comp = IntCodeComputer("./day05/input_p.txt", input_=0)
+    comp.run(show_outputs=False)
     print(comp.output)
     return comp.output
 
