@@ -15,22 +15,22 @@ class IntCodeComputer():
         
         # How many addresses to jump given each instruction
         # DEFINES valid instructions (except halt instruction)
-        self.jump_after_inst = {    
-            1: 4,
-            2: 4,
-            3: 2,
-            4: 2,
-            5: 3,   # 5 and 6 (jump if true/false) don't jump 3 positions, but is equivalent to.
-            6: 3,   # This is for determining the output address in self.run()
-            7: 4,
-            8: 4
+        self.n_arguments = {    
+            1: 3,
+            2: 3,
+            3: 1,
+            4: 1,
+            5: 2,   # 5 and 6 (jump if true/false) don't jump 3 positions, but is equivalent to.
+            6: 2,   # This is for determining the output address in self.run()
+            7: 3,
+            8: 3
         }
         self.jump            = None
         self.inst_pointer    = self.init_inst_pointer
 
         # Possible instructions
         self.opcode_len = 2         # How many digits for an opcode, i.e. 02, 01, 99
-        self.valid_inst = {key for key in self.jump_after_inst.keys()}
+        self.valid_inst = {key for key in self.n_arguments.keys()}
         self.halt_inst  = {99}
 
         # Memory
@@ -73,11 +73,11 @@ class IntCodeComputer():
                 mem_index = self.inst_pointer + i + 1
                 
                 # Simple instructions like 3 and 4 only memory A needs to be updated
-                if mem_index >= (self.inst_pointer + self.jump_after_inst[curr_inst]): break
+                if mem_index >= (self.inst_pointer + self.n_arguments[curr_inst] + 1): break
 
                 # Last memory (where to write) should only be dereferenced ONCE at this stage
                 # It will be again dereferenced in "operations".
-                if i == self.jump_after_inst[curr_inst] - 2:
+                if i == (self.n_arguments[curr_inst] - 1):
                     self.memory[key] = self.opcode[mem_index]
                     break
 
@@ -91,7 +91,7 @@ class IntCodeComputer():
                         raise ValueError(f"Mode '{self.modes[i]}' not supported")
       
             # Determining the output address
-            mem = chr(65 + self.jump_after_inst[curr_inst] - 2)
+            mem = chr(65 + self.n_arguments[curr_inst] - 1)
             output_addr = self.memory[mem]
 
             # Operations
@@ -188,7 +188,7 @@ class IntCodeComputer():
 
         str_code = "0" * (self.inst_max_len - len(str_code)) + str_code
         instruction = int(str_code[-2:])
-        self.jump = self.jump_after_inst[instruction]
+        self.jump = self.n_arguments[instruction] + 1
         
         modes = []
 
@@ -198,7 +198,7 @@ class IntCodeComputer():
             except IndexError as e:     # Trying to access 3 addresses when only 1 is present
                 modes.append(None)
 
-        # Mode of memory A is always zero. "Parameters that an instruction writes to will never be in immediate mode."
+        # "Parameters that an instruction writes to will never be in immediate mode."
         # modes[0] = Mode.zero
 
         return modes, instruction
