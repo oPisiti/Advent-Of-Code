@@ -106,7 +106,9 @@ class IntCodeComputer():
                     self.opcode[output_addr] = self.input
                 
                 case 4:     # Outputs
-                    self.output = self.opcode[output_addr]                    
+                    match self.modes[0]:
+                        case Mode.zero: self.output = self.opcode[output_addr] 
+                        case Mode.one:  self.output = output_addr
 
                     # Finished a test
                     if show_outputs: print(f'Output: {self.output}')
