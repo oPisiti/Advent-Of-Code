@@ -8,10 +8,10 @@ except ModuleNotFoundError:
 
 def day05_plus(input: int, path="./day05/input.txt") -> int:
     comp = IntCodeComputer(path, input_=input)
-    comp.run(show_outputs=False)
+    comp.run(show_outputs=True)
     print(comp.output)
     return comp.output
 
 
 if __name__ == '__main__':
-    day05_plus(0)
+    day05_plus(5)

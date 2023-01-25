@@ -53,7 +53,7 @@ class IntCodeComputer():
     def run(self, show_outputs=True) -> None:
         """
         Executes opcode
-        Output instructions are printed to console
+        Output instructions are printed to console if show_outputs == True
         """
 
         # Determining instruction
@@ -115,12 +115,18 @@ class IntCodeComputer():
                 
                 case 5:     # Jump-if-true
                     if self.memory["A"] != 0:
-                        self.inst_pointer = self.memory["B"]
+                        match self.modes[1]:
+                            case Mode.zero: self.inst_pointer = self.opcode[self.memory["B"]]
+                            case Mode.one:  self.inst_pointer = self.memory["B"]
+
                         continue
                 
                 case 6:     # Jump-if-false
                     if self.memory["A"] == 0:
-                        self.inst_pointer = self.memory["B"]
+                        match self.modes[1]:
+                            case Mode.zero: self.inst_pointer = self.opcode[self.memory["B"]]
+                            case Mode.one:  self.inst_pointer = self.memory["B"]
+
                         continue
                 
                 case 7:     # Less than
