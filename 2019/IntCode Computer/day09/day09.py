@@ -6,12 +6,10 @@ except ModuleNotFoundError:
     from intCodeComputer import IntCodeComputer
 
 
-def day05():
-    comp = IntCodeComputer("./day05/input.txt", input_=1)
-    comp.run(show_outputs = False)
-    print(comp.output)
+def day09(input: int, path="./day09/input.txt") -> int:
+    comp = IntCodeComputer(path, input_=input)
+    comp.run(show_outputs=True)
     return comp.output
 
-
 if __name__ == '__main__':
-    day05()
+    day09(2)
