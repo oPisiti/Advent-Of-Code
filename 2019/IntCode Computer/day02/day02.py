@@ -12,9 +12,8 @@ def day02():
 
     computer.run()
 
-    ans = computer.get_output()
-    print(f"Position 0: {ans}")
-    return ans
+    print(f"Position 0: {computer.opcode[0]}")
+    return computer.opcode[0]
 
 
 if __name__ == '__main__':

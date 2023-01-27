@@ -2,6 +2,7 @@ import sys
 sys.path.append("../IntCode Computer")
 from day02 import day02, day02_p
 from day05 import day05, day05_p
+from day09 import day09
 
 def test_second_day():
     assert day02.day02()        == 6087827, "day02 failed"
@@ -23,3 +24,12 @@ def test_fifth_day_plus_ex_10():
 
 def test_fifth_day_plus():
     assert day05_p.day05_plus(5) == 8346937
+
+def test_ninth_day_ex():
+    assert day09.day09(0, "./day09/input_ex.txt") == 99
+
+def test_ninth_day():
+    assert day09.day09(1) == 3013554615
+
+def test_ninth_day_plus():
+    assert day09.day09(2) == 50158

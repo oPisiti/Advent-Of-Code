@@ -2,6 +2,7 @@ from enum import Enum
 class Mode(Enum):
     zero = "Position Mode"     
     one  = "Immediate Mode"     
+    two  = "Relative Mode"
 
 class IntCodeComputer():
     def __init__(self, path: str, input_ = 1):
@@ -23,28 +24,35 @@ class IntCodeComputer():
             5: 2,   # 5 and 6 (jump if true/false) don't jump 3 positions, but is equivalent to.
             6: 2,   # This is for determining the output address in self.run()
             7: 3,
-            8: 3
+            8: 3,
+            9: 1
         }
         self.jump            = None
         self.inst_pointer    = self.init_inst_pointer
 
         # Possible instructions
-        self.opcode_len = 2         # How many digits for an opcode, i.e. 02, 01, 99
+        self.opcode_len = 2         # How many digits for an opcode, i.e. 02, 01, 99 all equal 2
         self.valid_inst = {key for key in self.n_arguments.keys()}
         self.halt_inst  = {99}
 
         # Memory
-        # Given opcode CBAZZ, ABC are memory and ZZ is the instruction
+        # Given opcode CBAZZ, ABC is the base memory and ZZ is the instruction
         self.memory = {
             "A": None,
             "B": None,
             "C": None
         }
+        self.extra_mem = {}
 
         # Modes
-        self.modes_len    = len(self.memory.keys())
-        self.inst_max_len = self.modes_len + self.opcode_len
-        self.modes        = [Mode.zero for _ in range(self.modes_len)]
+        self.modes_len      = len(self.memory.keys())
+        self.inst_max_len   = self.modes_len + self.opcode_len
+        self.modes          = [Mode.zero for _ in range(self.modes_len)]
+        self.rel_base_off   = 0
+
+        # Used in self.search_memory_on_modes()
+        self.n_dereferences = [{Mode.one}, {Mode.zero, Mode.two}]   # Modes in position 0 (mode a) will be dereferenced 0 times        
+                                                                    # Modes in position 1 (modes b and c) will be dereferenced once...
 
         # IO
         self.input  = input_
@@ -55,6 +63,7 @@ class IntCodeComputer():
         Executes opcode
         Output instructions are printed to console if show_outputs == True
         """
+        self.show_outputs = show_outputs
 
         # Determining instruction
         _, curr_inst = self.get_opcode_and_modes(self.opcode[self.inst_pointer])
@@ -72,21 +81,27 @@ class IntCodeComputer():
             for i, key in enumerate(self.memory.keys()):
                 mem_index = self.inst_pointer + i + 1
                 
-                # Simple instructions like 3 and 4 only memory A needs to be updated
+                # Simple instructions like 3 and 4 require only memory A to be updated
                 if mem_index >= (self.inst_pointer + self.n_arguments[curr_inst] + 1): break
 
                 # Last memory (where to write) should only be dereferenced ONCE at this stage
                 # It will be again dereferenced in "operations".
                 if i == (self.n_arguments[curr_inst] - 1):
-                    self.memory[key] = self.opcode[mem_index]
+                    self.memory[key] = self.get_from_opcode(mem_index)
+
+                    if self.modes[i] == Mode.two: 
+                        self.memory[key] += self.rel_base_off
+
                     break
 
                 # Instructions that need to read more than one memory address
                 match self.modes[i]:
                     case Mode.zero:
-                        self.memory[key] = self.opcode[self.opcode[mem_index]]
+                        self.memory[key] = self.get_from_opcode(self.opcode[mem_index])
                     case Mode.one:
-                        self.memory[key] = self.opcode[mem_index]
+                        self.memory[key] = self.get_from_opcode(mem_index)
+                    case Mode.two:
+                        self.memory[key] = self.get_from_opcode(self.opcode[mem_index] + self.rel_base_off)
                     case _:
                         raise ValueError(f"Mode '{self.modes[i]}' not supported")
       
@@ -95,55 +110,99 @@ class IntCodeComputer():
             output_addr = self.memory[mem]
 
             # Operations
-            match curr_inst:
-                case 1:     # Addition                 
-                    self.opcode[output_addr] = self.memory["A"] + self.memory["B"]
-                
-                case 2:     # Product
-                    self.opcode[output_addr] = self.memory["A"] * self.memory["B"]
-                
-                case 3:     # Stores input
-                    self.opcode[output_addr] = self.input
-                
-                case 4:     # Outputs
-                    match self.modes[0]:
-                        case Mode.zero: self.output = self.opcode[output_addr] 
-                        case Mode.one:  self.output = output_addr
-
-                    # Finished a test
-                    if show_outputs: print(f'Output: {self.output}')
-                
-                case 5:     # Jump-if-true
-                    if self.memory["A"] != 0:
-                        match self.modes[1]:
-                            case Mode.zero: self.inst_pointer = self.opcode[self.memory["B"]]
-                            case Mode.one:  self.inst_pointer = self.memory["B"]
-
-                        continue
-                
-                case 6:     # Jump-if-false
-                    if self.memory["A"] == 0:
-                        match self.modes[1]:
-                            case Mode.zero: self.inst_pointer = self.opcode[self.memory["B"]]
-                            case Mode.one:  self.inst_pointer = self.memory["B"]
-
-                        continue
-                
-                case 7:     # Less than
-                    if self.memory["A"] < self.memory["B"]:
-                        self.opcode[output_addr] = 1
-                    else:
-                        self.opcode[output_addr] = 0
-                
-                case 8:     # Equals
-                    if self.memory["A"] == self.memory["B"]:
-                        self.opcode[output_addr] = 1
-                    else:
-                        self.opcode[output_addr] = 0
-
+            cont = self.handle_operation(curr_inst, output_addr)
+            if cont: continue
 
             # Jumping. P.S.: self.jump is updated every instruction by self.get_opcode_and_modes()
             self.inst_pointer += self.jump
+
+    def handle_operation(self, curr_inst: int, output_addr: int) -> bool:        
+        match curr_inst:
+            case 1:     # Addition
+                self.put_to_opcode(self.memory["A"] + self.memory["B"], output_addr)
+
+            case 2:     # Product
+                self.put_to_opcode(self.memory["A"] * self.memory["B"], output_addr)
+
+            case 3:     # Stores input
+                self.put_to_opcode(self.input, output_addr)
+
+            case 4:     # Outputs
+                self.output = self.search_memory_on_modes(output_addr, self.modes[0])
+
+                # Finished a test
+                if self.show_outputs:
+                    print(self.output)
+
+            case 5:     # Jump-if-true
+                if self.memory["A"] != 0:
+                    self.inst_pointer = self.search_memory_on_modes(self.memory["B"], self.modes[1])
+                    return 1
+
+            case 6:     # Jump-if-false
+                if self.memory["A"] == 0:
+                    self.inst_pointer = self.search_memory_on_modes(self.memory["B"], self.modes[1])
+                    return 1
+
+            case 7:     # Less than
+                if self.memory["A"] < self.memory["B"]:
+                    self.put_to_opcode(1, output_addr)
+                else:
+                    self.put_to_opcode(0, output_addr)
+
+            case 8:     # Equals
+                if self.memory["A"] == self.memory["B"]:
+                    self.put_to_opcode(1, output_addr)
+                else:
+                    self.put_to_opcode(0, output_addr)
+
+            case 9:     # Modifies relative base offset
+                self.rel_base_off += self.search_memory_on_modes(self.memory["A"], self.modes[0])
+
+        return 0
+
+    def search_memory_on_modes(self, mem: int, mode: Mode) -> int:
+        """
+        Returns a value from memory base a mode and how many dereferences it needs.
+        Number of dereferences in the form of a list of sets (self.n_dereferences) i.e., [{a}, {b, c}]
+        Position 0 (mode a) will be dereferenced 0 times
+        Position 1 (modes b and c) will be dereferenced once
+        """
+        
+        out = mem
+        n_deref = 0
+        for i, se in enumerate(self.n_dereferences):
+            if mode in se: n_deref = i
+        
+        for i in range(0, n_deref):
+            out = self.get_from_opcode(out)
+
+        return out
+
+    def get_from_opcode(self, index: int) -> int:
+        """
+        Returns value at index index in opcode (if existent) else
+        in self.extra_mem
+        """
+
+        if index < len(self.opcode):
+            return self.opcode[index]
+        
+        if index not in self.extra_mem.keys():
+            self.extra_mem[index] = 0
+
+        return self.extra_mem[index]
+
+    def put_to_opcode(self, value: int, index: int) -> None:
+        """
+        Puts a value into index in self.opcode
+        """
+
+        if index < len(self.opcode):
+            self.opcode[index] = value
+            return
+        
+        self.extra_mem[index] = value
 
     def read_input_file(self):
         with open(self.path_input) as data:
@@ -154,9 +213,10 @@ class IntCodeComputer():
     def reset_memory(self) -> None:
         self.opcode       = self.base_opcode.copy()     
         self.inst_pointer = self.init_inst_pointer 
+        self.rel_base_off = 0
 
     def get_output(self) -> int:
-        return self.opcode[0]
+        return self.output
 
     def search_for_output(self, desired_out: int, max_noun: int, max_verb: int) -> (int, int):
         """
@@ -171,7 +231,7 @@ class IntCodeComputer():
 
                 self.run()
 
-                if self.get_output() == desired_out:
+                if self.opcode[0] == desired_out:
                     return (noun, verb)
 
         error_msg = f"""
@@ -182,10 +242,10 @@ class IntCodeComputer():
 
     def get_opcode_and_modes(self, code: int) -> (list[Mode], int):
         """
-        Returns parsed information regarding modes and opcode.
+        Returns parsed information regarding modes and instruction.
         Also takes care of how much to increase the pointer after
         current instruction is done.
-        Opcode: CBAZZ with C, B and A being memory addresses and ZZ an instruction
+        Instruction: CBAZZ with C, B and A being memory addresses and ZZ an instruction
         """    
 
         if code in self.halt_inst: return None, code
@@ -200,11 +260,11 @@ class IntCodeComputer():
 
         for i in range(self.modes_len-1, -1, -1):
             try:
-                modes.append(Mode.zero if str_code[i] == "0" else Mode.one)
-            except IndexError as e:     # Trying to access 3 addresses when only 1 is present
+                match str_code[i]:
+                    case "0":   modes.append(Mode.zero)
+                    case "1":   modes.append(Mode.one)
+                    case "2":   modes.append(Mode.two)
+            except IndexError as e:     # Trying to access 3 addresses when only 1 or 2 are present
                 modes.append(None)
-
-        # "Parameters that an instruction writes to will never be in immediate mode."
-        # modes[0] = Mode.zero
 
         return modes, instruction
