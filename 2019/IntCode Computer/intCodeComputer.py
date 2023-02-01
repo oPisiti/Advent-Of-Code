@@ -5,7 +5,7 @@ class Mode(Enum):
     two  = "Relative Mode"
 
 class IntCodeComputer():
-    def __init__(self, path: str, input_ = 1):
+    def __init__(self, path: str, input_ = 1, prompt_for_inputs = False):
         self.base_opcode       = ...
         self.init_inst_pointer = 0
         
@@ -55,8 +55,9 @@ class IntCodeComputer():
                                                                     # Modes in position 1 (modes b and c) will be dereferenced once...
 
         # IO
-        self.input  = input_
-        self.output = None
+        self.input         = input_
+        self.prompt_inputs = prompt_for_inputs
+        self.output        = None
 
     def run(self, show_outputs=True) -> None:
         """
@@ -125,14 +126,16 @@ class IntCodeComputer():
                 self.put_to_opcode(self.memory["A"] * self.memory["B"], output_addr)
 
             case 3:     # Stores input
-                self.put_to_opcode(self.input, output_addr)
+                if self.prompt_inputs: inp = int(input())
+                else:                  inp = self.input  # Uses what is in self.input
+
+                self.put_to_opcode(inp, output_addr)
 
             case 4:     # Outputs
                 self.output = self.search_memory_on_modes(output_addr, self.modes[0])
 
                 # Finished a test
-                if self.show_outputs:
-                    print(self.output)
+                if self.show_outputs: print(self.output)
 
             case 5:     # Jump-if-true
                 if self.memory["A"] != 0:

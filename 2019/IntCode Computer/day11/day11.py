@@ -10,11 +10,18 @@ parent_dir = os.path.dirname(file_dir)
 os.chdir(parent_dir)
 from intCodeComputer import IntCodeComputer
 
+import io
+from contextlib import redirect_stdout
 
-def day09(input: int, path="./day09/input.txt") -> int:
+
+def day11(input: int, path="./day11/input.txt"):
     comp = IntCodeComputer(path, input_=input)
-    comp.run(show_outputs=True)
-    return comp.output
+
+    with io.StringIO() as buf, redirect_stdout(buf):
+        comp.run(show_outputs=True)
+        output = buf.getvalue()
+
+    print(f'{output}')
 
 if __name__ == '__main__':
-    day09(2)
+    day11(1)
