@@ -1,3 +1,8 @@
+"""
+This is the solution of part of the Advent of Code Challenge 2023
+Author: oPisiti
+"""
+
 import re
 
 def scratchcards_points():
