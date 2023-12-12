@@ -12,7 +12,8 @@ def cosmic_expansion():
 
     uni = [re.findall(".", line) for line in uni_raw]
 
-    expand(uni)
+    expansion_rate = 1_000_000
+    i_expanded, j_expanded = expand(uni)
 
     # Getting '#' positions
     galaxies_indexes = []
@@ -29,13 +30,27 @@ def cosmic_expansion():
     # Calculating all the distances
     dist_sum = 0
     for f, s in pairs:
-        dist_sum += abs(f[0] - s[0]) + abs(f[1] - s[1])
+        dist_base = abs(f[0] - s[0]) + abs(f[1] - s[1])
+        
+        i_inside_count = 0
+        for i_ex in i_expanded:
+            if i_ex > min(f[0], s[0]) and i_ex < max(f[0], s[0]):
+                i_inside_count += 1
+
+        j_inside_count = 0
+        for j_ex in j_expanded:
+            if j_ex > min(f[1], s[1]) and j_ex < max(f[1], s[1]):
+                j_inside_count += 1
+
+        dist_expanded = (i_inside_count + j_inside_count) * (expansion_rate - 1)
+
+        dist_sum += dist_base + dist_expanded
 
     return dist_sum
 
 
-def expand(uni: list[list[str]]) -> None:
-    """ Applies universe expansion """
+def expand(uni: list[list[str]]) -> (list[int], list[int]):
+    """ Returns rows and column indexes where the universe expanded """
 
     # Vertical expansion
     j_add_list = []
@@ -47,11 +62,6 @@ def expand(uni: list[list[str]]) -> None:
                 break
         
         if clean: j_add_list.append(j)
-    
-    # Adding vertical expansion
-    for j in j_add_list[::-1]:
-        for i in range(len(uni)):
-            uni[i].insert(j + 1, ".")
 
     # Horizontal expansion
     i_add_list = []
@@ -63,10 +73,8 @@ def expand(uni: list[list[str]]) -> None:
                 break
         
         if clean: i_add_list.append(i)
-    
-    # Adding vertical expansion
-    for i in i_add_list[::-1]:
-        uni.insert(i+1, ["." for _ in range(len(uni[0]))])
+
+    return i_add_list, j_add_list
 
 
 if __name__ == '__main__':
