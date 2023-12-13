@@ -6,80 +6,71 @@ Author: oPisiti
 import re
 
 
+class Strip():
+    def __init__(self, strip: list[str], sizes: list[int]) -> None:
+        self.strip = strip
+        self.sizes = sizes
+        self.count = 0
+
+
+    def count_possibilities(self, strip_partial: str = None) -> None:
+        if strip_partial is None: strip_partial = self.strip
+
+        indexes = [i for i in range(len(strip_partial)) if strip_partial[i] == "?"]
+
+        complete = False
+        if len(indexes) == 0: return
+        if len(indexes) == 1: complete = True
+
+        for char in (".", "#"):
+            curr_strip = strip_partial[:indexes[0]] + char + strip_partial[indexes[0] + 1:]
+
+            # Too many "#"
+            if len([i for i in range(len(strip_partial)) if strip_partial[i] == "#"]) > sum(self.sizes): return
+
+            if complete:
+                if self.is_valid_strip(curr_strip): 
+                    self.count += 1
+
+            else:        
+                self.count_possibilities(curr_strip)  
+
+        return
+
+
+    def is_valid_strip(self, strip: str) -> bool:
+        parts = re.findall("\#+", strip)
+
+        # Too many parts
+        if len(parts) != len(self.sizes): return False
+
+        index = 0
+        for part in parts:
+            if len(part) != self.sizes[index]: return False
+            index += 1
+        
+        return True
+
+
 def hot_springs():
     with open("input.txt") as f:
         data = [d.split(" ") for d in f.read().strip().split("\n")]
 
+    strips = []
     for i, spring in enumerate(data):
-        data[i][0] = re.findall("[\?\#]+", data[i][0])
-        data[i][1] = [int(a) for a in data[i][1].split(",")]
-    
+        strips.append(Strip(data[i][0], [int(a) for a in data[i][1].split(",")]))
+
     # Counting 
     answer = 0
-    for i, spring in enumerate(data):
-        len_left = data[i][1].copy()
+    for strip in strips:
+        strip.count_possibilities()
+        pass
 
-        arr = 1
-        for strip in spring[0]:
-            # Full of "#" or "."
-            hash_count = len([1 for char in strip if char == "?"])
-            if hash_count == 0: continue
-
-            counted = count_possibilities(strip, len_left)
-            print(f"Counted: {counted}")
-            arr *= counted
-            pass
-
-        answer += arr
+        answer += 1
 
     pass
-    return answer
+    return sum([strip.count for strip in strips])
 
-
-def count_possibilities(strip: str, lengths: list[int]) -> int:
-    indexes = [i for i in range(len(strip)) if strip[i] == "?"]
-    
-    complete = False
-    if len(indexes) == 0: return 0
-    if len(indexes) == 1: complete = True
-
-    count = 0
-
-    for char in (".", "#"):
-        curr_strip = strip[:indexes[0]] + char + strip[indexes[0] + 1:]
-
-        # Too many "#"
-        if len([i for i in range(len(strip)) if strip[i] == "#"]) > sum(lengths): return 0
-
-        if complete:
-            is_valid, lengths = is_valid_strip(curr_strip, lengths)
-
-            if is_valid and len(lengths) == 0: count += 1
-
-        else:        
-            count += count_possibilities(curr_strip, lengths)  
-
-        pass  
-
-
-    return count
-
-
-def is_valid_strip(strip: str, lengths: list[int]) -> (bool, list[int]):
-    parts = re.findall("\#+", strip)
-
-    # Too many parts
-    if len(parts) > len(lengths): return False, lengths
-    if len(parts) == 0:           return False, lengths
-
-    index = 0
-    for part in parts:
-        if len(part) != lengths[index]: return False, lengths
-        index += 1
-    
-    lengths = lengths[index:]
-
-    return True, lengths
 
 
 if __name__ == '__main__':
