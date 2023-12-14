@@ -29,7 +29,10 @@ def rocks():
 
             it_liquid = it_remaining - cycle_size * floor(it_remaining/cycle_size)
 
-            curr_hash = cached_cycles[curr_hash][1]
+            # Defining the answer's hash
+            for _ in range(it_liquid - 1):
+                curr_hash = cached_cycles[curr_hash][1]
+
             break
 
         base_hash = hash(str(platform))
