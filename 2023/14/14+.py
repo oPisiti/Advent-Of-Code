@@ -30,26 +30,23 @@ def rocks():
             it_liquid = it_remaining - cycle_size * floor(it_remaining/cycle_size)
 
             # Defining the answer's hash
-            for _ in range(it_liquid - 1):
-                curr_hash = cached_cycles[curr_hash][1]
+            for _ in range(it_liquid + 1):
+                curr_hash = cached_cycles[curr_hash][0]
 
             break
 
         base_hash = hash(str(platform))
-        try:
-            # Current config has been cached
-            platform = deepcopy(cached_cycles[base_hash][0])
 
-            # I'm back to a previous configuration
-            if cached_cycles[base_hash][2] > 0:
-                found_cycle = True
-                curr_hash = cached_cycles[base_hash][1]
-            
+        # Back to a previous configuration
+        if base_hash in cached_cycles.keys():
+            found_cycle = True
+
+            curr_hash = cached_cycles[base_hash][0]
+
             # Adding to count
             cached_cycles[base_hash][2] += 1
+
             continue
-        except KeyError as e:
-            pass
 
         # Tilting north
         for i in range(1, len(platform)):
@@ -79,13 +76,16 @@ def rocks():
                 if platform[i][j] == "O":
                     move_rock_west_east(platform, i, j, west=False)
 
-        cached_cycles[base_hash] = [deepcopy(platform), hash(str(platform)), 0]
+        cached_cycles[base_hash] = [hash(str(platform)), get_score(platform), 0]
 
     # Calculating the score
-    platform = deepcopy(cached_cycles[curr_hash][0])
-    score = sum([line.count("O") * (len(platform) - i) for i, line in enumerate(platform)])
+    score = cached_cycles[curr_hash][1]
 
     return score
+
+
+def get_score(platform: list[list[str]]) -> int:
+    return sum([line.count("O") * (len(platform) - i) for i, line in enumerate(platform)])
 
 
 def move_rock_north_south(plat: list[list[str]], i: int, j: int, north: bool = True) -> None:
