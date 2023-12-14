@@ -3,7 +3,10 @@ This is the solution of part of the Advent of Code Challenge 2023
 Author: oPisiti
 """
 
+from copy import deepcopy
 from functools import cache
+from math import floor
+
 
 def rocks():
     with open("input.txt") as f:
@@ -11,8 +14,39 @@ def rocks():
 
     platform = [[item for item in row] for row in data]
 
-    for a in range(1_000_000_000):
-        if not a%100_000: print(a)
+    cached_cycles = dict()
+
+    found_cycle = False
+    curr_hash = None
+    iterations = 1_000_000_000
+    for a in range(iterations):
+
+        if found_cycle:
+            # Calculating final configuration based on the cache size
+            it_remaining = iterations - a
+
+            cycle_size = sum([1 for k, v in cached_cycles.items() if v[2] != 0])
+
+            it_liquid = it_remaining - cycle_size * floor(it_remaining/cycle_size)
+
+            curr_hash = cached_cycles[curr_hash][1]
+            break
+
+        base_hash = hash(str(platform))
+        try:
+            # Current config has been cached
+            platform = deepcopy(cached_cycles[base_hash][0])
+
+            # I'm back to a previous configuration
+            if cached_cycles[base_hash][2] > 0:
+                found_cycle = True
+                curr_hash = cached_cycles[base_hash][1]
+            
+            # Adding to count
+            cached_cycles[base_hash][2] += 1
+            continue
+        except KeyError as e:
+            pass
 
         # Tilting north
         for i in range(1, len(platform)):
@@ -27,14 +61,14 @@ def rocks():
                 # Is a moveable rock
                 if platform[i][j] == "O":
                     move_rock_west_east(platform, i, j)
-        
+
         # Tilting south
         for i in range(len(platform)-2, -1, -1):
             for j in range(len(platform[0])):
                 # Is a moveable rock
                 if platform[i][j] == "O":
                     move_rock_north_south(platform, i, j, north=False)
-    
+
         # Tilting east
         for j in range(len(platform[0])-2, -1, -1):
             for i in range(len(platform)):
@@ -42,10 +76,14 @@ def rocks():
                 if platform[i][j] == "O":
                     move_rock_west_east(platform, i, j, west=False)
 
+        cached_cycles[base_hash] = [deepcopy(platform), hash(str(platform)), 0]
+
     # Calculating the score
+    platform = deepcopy(cached_cycles[curr_hash][0])
     score = sum([line.count("O") * (len(platform) - i) for i, line in enumerate(platform)])
 
     return score
+
 
 def move_rock_north_south(plat: list[list[str]], i: int, j: int, north: bool = True) -> None:
     if north:
@@ -69,6 +107,7 @@ def move_rock_north_south(plat: list[list[str]], i: int, j: int, north: bool = T
 
     plat[i][j] = "."
     plat[i_target][j] = "O"
+
 
 def move_rock_west_east(plat: list[list[str]], i: int, j: int, west: bool = True) -> None:
     if west:
