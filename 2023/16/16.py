@@ -10,17 +10,20 @@ def hash():
     with open("input.txt") as f:
         maze = f.read().strip().split("\n")
 
-    energized = [[False for _ in range(len(maze))] for _ in range(len(maze))]
+    energized = [[[] for _ in range(len(maze))] for _ in range(len(maze))]
 
     light_pos = [0, -1]
     light_vel = [0,  1]
 
-
-    march_light(maze, energized, light_pos, light_vel)
+    # Parameters for function calls
+    call_stack = [[light_pos, light_vel]]
+    while call_stack:
+        march_light(call_stack, maze, energized, call_stack[0][0], call_stack[0][1])
+        call_stack.pop(0)
 
     print_energized(energized)
 
-    return sum(sum(pos for pos in line) for line in energized)
+    return sum(sum(1 if len(pos) > 0 else 0 for pos in line) for line in energized)
 
 
 def get_next_vel(maze: list[str], curr_pos: list[int], curr_vel: list[int]) -> list[list]:
@@ -50,36 +53,30 @@ def get_next_vel(maze: list[str], curr_pos: list[int], curr_vel: list[int]) -> l
     return [curr_vel, ]
 
 
-def march_light(maze: list[str], energized: list[list[bool]], pos: list[int], vel: list[int]) -> None:
+def march_light(call_stack: list[list[int]], maze: list[str], energized: list[list[bool]], pos: list[int], vel: list[int]) -> None:
     curr_pos = [pos[0] + vel[0], pos[1] + vel[1]]
 
     # Out of bounds
     if curr_pos[0] < 0 or curr_pos[0] >= len(maze) or curr_pos[1] < 0 or curr_pos[1] >= len(maze[0]):
         return
 
-    # Marking tile as energized
-    was_energized = energized[curr_pos[0]][curr_pos[1]]
-    energized[curr_pos[0]][curr_pos[1]] = True
+    # Back to the same configuration
+    if vel in energized[curr_pos[0]][curr_pos[1]]: return
+
+    # Marking current position
+    energized[curr_pos[0]][curr_pos[1]].append(vel)
+
+    # Skipping "." - Reduces the number of recursion calls
+    if maze[curr_pos[0]][curr_pos[1]] == ".":
+        call_stack.append([curr_pos, vel])
+        return
     
     # Next velocities
     next_vel = get_next_vel(maze, curr_pos, vel)
 
-    # Back to the same configuration
-    if was_energized:
-        future_steps_taken = True
-
-        for v in next_vel:
-            try:
-                if not energized[curr_pos[0] + v[0]][curr_pos[1] + v[1]]:
-                    future_steps_taken = False
-            except IndexError as e:
-                continue
-        
-        if future_steps_taken: return
-
     # Next step
     for v in next_vel:
-        march_light(maze, energized, curr_pos, v)        
+        call_stack.append([curr_pos, v])       
 
 
 def print_energized(energized: list[list[bool]]):
